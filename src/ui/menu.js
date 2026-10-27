@@ -2,8 +2,8 @@ import { MAPS } from '../data/maps.js';
 import { CHARACTERS } from '../data/characters.js';
 import { createDefaultConfig, setPlayerCount, selectCharacter } from '../core/config.js';
 
-export function mountMenu(root, { onPreview, onStart }) {
-  let config = createDefaultConfig();
+export function mountMenu(root, { onPreview, onStart, initialConfig }) {
+  let config = structuredClone(initialConfig ?? createDefaultConfig());
   let selectedSeat = 0;
   root.innerHTML = `
     <header class="topbar"><a class="brand" href="./"><span class="brand-icon">▦</span>口袋大富翁<span class="brand-en">POCKET MONOPOLY</span></a><span class="build-label"><i></i> 本地同乐 · 3D 桌游</span><button class="text-button" id="help">怎么玩 <span>↗</span></button></header>
@@ -26,10 +26,10 @@ export function mountMenu(root, { onPreview, onStart }) {
           <p class="small-note" id="round-hint">默认 30 回合 · 支持 5–100 回合</p>
           <p id="form-error" class="form-error" role="alert"></p>
           <button type="button" id="start" class="start-button">集结出发 <span>→</span></button>
-          <p class="start-note">阶段①：确认队伍 · 棋盘玩法将在下一阶段开放</p>
+          <p class="start-note">阶段②：掷骰与移动 · AI 座位暂由玩家代操作</p>
         </section>
       </div>
-      <footer><span>✦ 好运在路上，快乐在一起。</span><span>软件工程课程项目 <b> / </b> 第①阶段 · 游戏大厅</span></footer>
+      <footer><span>✦ 好运在路上，快乐在一起。</span><span>软件工程课程项目 <b> / </b> 第②阶段 · 棋盘旅行</span></footer>
     </main>
     <dialog id="info-dialog" aria-labelledby="dialog-title"><div class="dialog-icon">✦</div><h2 id="dialog-title"></h2><div id="dialog-content"></div><button type="button" class="start-button" id="close-dialog">返回大厅 <span>↩</span></button></dialog>`;
 
@@ -78,7 +78,7 @@ export function mountMenu(root, { onPreview, onStart }) {
       '① 选择地图与 2–4 位旅伴，每个座位都能设为真人或 AI。点击座位后选择角色，占用的角色会自动交换。',
       '② 设置回合上限。完整版本中，大家轮流掷骰、购买地产、升级房屋，并应对旅途中的随机事件。',
       '③ 仅剩一人或达到回合上限时，按总资产排名。',
-      '当前为第①阶段：可配置队伍并预览主题。掷骰、地产、事件和 AI 行动将在后续阶段逐步实现。',
+      '当前为第②阶段：可掷骰、逐格移动、查看落格说明并结束回合。AI 座位暂由玩家代掷，地产和事件尚不改变资产。',
     ]);
     if (button.id === 'close-dialog') dialog.close();
     if (button.id === 'start') {
@@ -86,14 +86,8 @@ export function mountMenu(root, { onPreview, onStart }) {
       error.textContent = '';
       config.roundLimit = Number(root.querySelector('#round-limit').value);
       try {
-        const state = onStart(structuredClone(config));
-        const map = MAPS.find(item => item.id === state.mapId);
-        showDialog('旅行队伍，集结完毕！', [
-          `${map.name} · ${state.players.length} 位玩家 · ${state.roundLimit} 回合上限`,
-          state.players.map(player => `${player.name}（${player.type === 'human' ? '真人' : 'AI'} / ${CHARACTERS.find(item => item.id === player.characterId).name}）`).join('、'),
-          '每人初始拥有 1,500 金币。配置已通过规则层校验，并生成独立的游戏初始状态。',
-          '第①阶段已准备就绪。下一阶段将接入真实棋盘、掷骰和逐格移动，现在可返回大厅继续调整。',
-        ]);
+        // 启动成功会替换页面，不再访问旧菜单的元素。
+        onStart(structuredClone(config));
       } catch (reason) { error.textContent = reason.message; root.querySelector('#round-limit').focus(); }
     }
   });
@@ -108,5 +102,6 @@ export function mountMenu(root, { onPreview, onStart }) {
     const bounds = dialog.getBoundingClientRect();
     if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
   });
+  root.querySelector('#round-limit').value = config.roundLimit;
   refresh();
 }

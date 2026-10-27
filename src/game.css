@@ -1,0 +1,50 @@
+/* 对局布局独立于大厅样式，便于分别维护。 */
+[hidden] { display: none !important; }
+.game-main { padding-top: 22px; }
+.game-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.game-heading h1 { font-size: 32px; margin: 6px 0 0; }
+.round-badge { padding: 12px 20px; border: 1px solid #d5dfce; border-radius: 30px; background: #eef1e5; font-weight: bold; }
+.play-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; }
+.board-panel { border: 1px solid #dce3d5; border-radius: 22px; overflow: hidden; background: #edf0e5; min-width: 0; }
+.board-toolbar { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #fffdf4; font-size: 12px; }
+#board-canvas { height: 520px; position: relative; }
+#board-canvas canvas { width: 100%; height: 100%; display: block; }
+.tile-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 15px; background: #fffdf4; font-size: 11px; }
+.tile-legend span { display: flex; align-items: center; gap: 6px; }
+.tile-legend i { width: 13px; height: 13px; border-radius: 4px; border: 1px solid #0001; }
+.game-sidebar { display: flex; flex-direction: column; gap: 12px; }
+.game-card { background: #fffdf7; border: 1px solid #e0e4d8; border-radius: 16px; padding: 17px; }
+.game-card h2 { font-size: 14px; margin: 0 0 10px; }
+.game-player { display: flex; align-items: center; gap: 8px; padding: 9px 6px; margin-top: 8px; border: 1px solid transparent; border-radius: 11px; }
+.game-player.active { border-color: #99b08d; background: #f0f4e8; }
+.game-player .seat-avatar { width: 34px; height: 34px; font-size: 20px; flex-shrink: 0; }
+.game-player strong { font-size: 11px; }
+.game-player small { display: block; font-size: 9px; margin-top: 5px; color: #75856b; }
+.player-coins { margin-left: auto; white-space: nowrap; font-size: 11px; color: #9b742c; }
+.turn-card { text-align: center; }
+#turn-heading { font-weight: bold; font-size: 16px; }
+.dice-readout { margin: 12px auto; width: 52px; height: 52px; background: #f6eacb; border-radius: 13px; display: grid; place-items: center; color: #365c46; font-size: 30px; font-weight: bold; transform: rotate(-5deg); }
+.game-card p { color: #7c8873; line-height: 1.8; font-size: 11px; }
+.start-button:disabled { opacity: 0.55; cursor: wait; }
+#game-error { color: #b64f3b; }
+#game-error:empty { display: none; }
+.log-card { margin-top: 20px; }
+#game-logs { max-height: 140px; overflow: auto; margin: 0; padding-left: 22px; font-size: 12px; color: #74836a; line-height: 1.9; }
+.board-directory { padding: 18px 5px; font-size: 12px; color: #73826a; }
+.board-directory summary { cursor: pointer; }
+.board-directory ol { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; list-style: none; padding: 0; }
+#cancel-leave { width: 100%; margin-top: 15px; }
+@media (max-width: 960px) {
+  .play-layout { grid-template-columns: 1fr; }
+  .game-sidebar { display: grid; grid-template-columns: 1fr 1fr; }
+  .landing-card { grid-column: 1 / -1; }
+  #board-canvas { height: 480px; }
+}
+@media (max-width: 520px) {
+  .game-heading h1 { font-size: 24px; }
+  .round-badge { font-size: 11px; padding: 10px; }
+  #board-canvas { height: 390px; }
+  .game-sidebar { grid-template-columns: 1fr; }
+  .board-directory ol { grid-template-columns: 1fr 1fr; }
+  .board-toolbar { padding: 12px; }
+}
