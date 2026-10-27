@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { createCharacter } from './character.js';
 import { CHARACTERS } from '../data/characters.js';
+import { createBoard, TILE_TYPES } from '../data/boards.js';
 
 export class WorldPreview {
   constructor(container) {
@@ -52,12 +53,12 @@ export class WorldPreview {
     this.scene.remove(this.world);
     this.world.traverse(object => {
       object.geometry?.dispose();
-      if (Array.isArray(object.material)) object.material.forEach(material => material.dispose());
-      else object.material?.dispose();
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.filter(Boolean).forEach(material => { material.map?.dispose(); material.dispose(); });
     });
   }
 
-  update(map, players) {
+  update(map, players, gameBoard = null) {
     this.clearWorld();
     this.world = new THREE.Group();
     this.scene.add(this.world);
@@ -80,22 +81,28 @@ export class WorldPreview {
     };
     box(8.6, 0.55, 8.6, map.ground, 0, 0, 0, 0.2);
     box(8.3, 0.12, 8.3, '#eae8ce', 0, -0.32, 0, 0.04);
-    const positions = [];
-    for (let index = 0; index < 24; index++) {
-      let x, z;
-      if (map.layout === 'square') {
-        const side = Math.floor(index / 6), offset = (index % 6) * 1.1;
-        [x, z] = [[-3.3 + offset, 3.3], [3.3, 3.3 - offset], [3.3 - offset, -3.3], [-3.3, -3.3 + offset]][side];
-      } else {
-        const angle = index / 24 * Math.PI * 2;
-        const radius = map.layout === 'hexagon' ? 3.1 / Math.cos((angle % (Math.PI / 3)) - Math.PI / 6) : 3.45;
-        x = Math.sin(angle) * radius; z = Math.cos(angle) * radius;
+    const board = gameBoard ?? createBoard(map.id);
+    const positions = board.map(tile => [tile.x, tile.z]);
+    this.tileMeshes = [];
+    for (const data of board) {
+      const tile = box(0.95, 0.22, 0.95, TILE_TYPES[data.type].color, data.x, 0.39, data.z);
+      tile.rotation.y = data.rotation;
+      this.tileMeshes.push(tile);
+      if (gameBoard) {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.textAlign = 'center'; ctx.fillStyle = '#355443';
+        ctx.font = 'bold 30px Microsoft YaHei, sans-serif';
+        ctx.fillText(TILE_TYPES[data.type].symbol, 64, 72);
+        ctx.font = '22px sans-serif'; ctx.fillText(String(data.index + 1).padStart(2, '0'), 64, 35);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const label = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.85), new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }));
+        label.rotation.x = -Math.PI / 2;
+        label.position.set(data.x, 0.515, data.z);
+        this.world.add(label);
       }
-      positions.push([x, z]);
-      const color = index === 0 ? '#f5c25c' : index % 6 === 3 ? map.accent : '#fff9e9';
-      const tile = box(0.95, 0.22, 0.95, color, x, 0.39, z);
-      if (map.layout !== 'square') tile.rotation.y = index / 24 * Math.PI * 2;
-      if (index % 3 === 1) box(0.5, 0.055, 0.18, map.color, x, 0.525, z);
     }
     if (map.id === 'city') {
       for (const [x, z, h, color] of [[-1.3, -1, 1.5, '#f0b565'], [0.1, -1.4, 2.3, '#f5d8ad'], [1.4, -0.8, 1.3, '#e99883'], [0.9, 1, 0.9, '#faf1d5'], [-1, 1, 1.1, '#93bdb7']]) {
@@ -129,7 +136,7 @@ export class WorldPreview {
     }
     players.forEach((player, index) => {
       const figure = createCharacter(CHARACTERS.find(character => character.id === player.characterId));
-      const [x, z] = positions[(index * 6) % 24];
+      const [x, z] = positions[gameBoard ? player.position : (index * 6) % board.length];
       figure.position.set(x, 0.58, z);
       figure.rotation.y = 0.45;
       figure.scale.setScalar(0.7);

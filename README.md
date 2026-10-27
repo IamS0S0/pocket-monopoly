@@ -1,95 +1,92 @@
 # 口袋大富翁
 
-基于 Three.js + Vite + 原生 JavaScript 的纯前端 3D 大富翁课程项目。代码、注释与文档以中文为主，不依赖后端、外部模型、字体或图片服务。
+软件工程课程项目：Three.js + Vite + 原生 JavaScript，纯前端实现，无后端、外部模型或在线 AI 服务。
 
-**当前版本：第①阶段「项目骨架与主菜单」。当前可配置游戏、预览主题与确认队伍，尚不能掷骰游玩完整对局。**
+**当前为第②阶段：主菜单、三套棋盘、掷骰动画、逐格移动及回合切换已实现。地产交易、事件效果、破产结算和 AI 自动决策尚未实现。**
 
-## 本地运行
+## 运行
 
-需要 Node.js 22.12+（本次开发使用 Node.js 24.13.1）以及支持 WebGL 2 的现代浏览器。
+建议使用 Node.js 22.12+；开发验证环境为 Windows、Node.js 24.13.1。
 
 ```bash
-npm install
+npm ci
 npm run dev
+npm test
+npm run build
 ```
 
-访问终端显示的地址，默认是 `http://127.0.0.1:5173`。首次安装依赖需要网络，运行时不请求外部模型或纹理。
+打开终端显示的 Local 地址，默认端口 5173；端口占用时可能递增。`npm run preview` 可预览 dist 中的生产构建。首次安装需要网络，游戏运行无需下载模型或纹理。浏览器需要支持 WebGL 2。
 
-```bash
-npm test          # 运行纯逻辑自动测试
-npm run build    # 产物输出至 dist
-npm run preview  # 检查生产构建
-```
+## 操作方式
 
-## 当前使用方式
+1. 在大厅选地图、2–4 名玩家、角色与 5–100 回合上限。
+2. 点击集结出发进入棋盘；所有棋子从起点出发，同格棋子有不同站位。
+3. 点击掷骰子：骰子滚动后，角色按点数逐格跳跃，镜头平滑跟随；可关闭镜头跟随。
+4. 落定后显示格子名称和类型，点击结束回合切换玩家。每位玩家行动一次才增加一轮。
+5. 达到回合上限后停止移动演示。返回大厅会清除本局进度，保留最近配置；刷新页面不保存进度。
 
-1. 切换「欢乐都市 / 童话森林 / 星际旅行」查看不同布局的微缩主题场景。
-2. 选择 2–4 人，每个座位独立设为真人或 AI；支持全真人、混合或全 AI 配置。
-3. 点击座位，再点击阿橙、小芽、露娜或莓莓。角色已占用时，双方交换角色。
-4. 输入 5–100 的整数回合数（默认 30）。点击「集结出发」查看配置摘要。
-5. 第①阶段按钮仅创建初始游戏状态并展示摘要；后续阶段才接入真实对局。
+本阶段 AI 座位由玩家手动代掷，界面明确标注。经过起点、地产、事件、机会、监狱和税收格目前只展示说明，不增减金币，不执行完整游戏规则。
 
-## 分层架构
+## 架构
 
 ```mermaid
 flowchart LR
-  Data[主题与角色数据] --> UI[UI 层：大厅与交互]
-  Data --> Render[渲染层：Three.js 场景与角色]
-  UI --> Main[应用编排层 main.js]
-  Main --> Core[纯逻辑层：配置校验与游戏状态]
+  Data[地图与角色数据] --> Core[纯逻辑：配置、骰子、回合引擎]
+  Data --> Render[Three.js 棋盘、角色与骰子]
+  UI[菜单与对局 UI] --> Main[main.js 应用编排]
+  Main --> Core
   Main --> Render
-  AI[后续 AI 模块] -.提交候选决策.-> Core
-  Core -.后续规则事件.-> Main
+  Core -->|状态快照| Main
+  Main -->|刷新界面| UI
 ```
 
-实线表示当前依赖，虚线表示后续扩展。`core` 不导入 Three.js 或 DOM，可直接在 Node.js 中测试。`render` 只负责画面，不裁决金币、胜负和回合。`ui` 收集输入，`main.js` 连接各层。AI 后续仅提出决策，规则层最终验证。
+core 不导入 DOM 或 Three.js。规则层先确定点数和路径，渲染层按此结果播放动画，每步完成后再提交位置。单一回合状态机与动作令牌拒绝重复、越序和过期回调。页面切换销毁旧引擎、动画与容器，避免旧事件积累。
 
-## 功能 → 代码文件 / 函数
+## 功能与代码对照
 
-| 当前功能 | 文件 | 关键函数或数据 |
-| --- | --- | --- |
-| 启动与层间协调 | `src/main.js` | `mountMenu` 回调、`onStart` |
-| 三种主题配置 | `src/data/maps.js` | `MAPS` |
-| 四种角色配置 | `src/data/characters.js` | `CHARACTERS` |
-| 默认配置与边界校验 | `src/core/config.js` | `createDefaultConfig`、`validateConfig` |
-| 人数增减 | `src/core/config.js` | `setPlayerCount` |
-| 角色选择与交换 | `src/core/config.js` | `selectCharacter` |
-| 初始化金币、位置和回合 | `src/core/state.js` | `createGameState` |
-| 地图、座位、控制方式与回合 UI | `src/ui/menu.js` | `mountMenu`、`refresh` |
-| 配置摘要与帮助弹窗 | `src/ui/menu.js` | `showDialog` |
-| 代码构建 Q 版角色 | `src/render/character.js` | `createCharacter` |
-| 主题微缩场景、动画、尺寸适配 | `src/render/preview.js` | `WorldPreview.update`、`resize` |
-| GPU 资源释放 | `src/render/preview.js` | `clearWorld`、`dispose` |
-| 响应式布局与角色图标 | `src/styles.css` | 媒体查询、`.avatar-art` |
-| 配置与状态回归测试 | `tests/config.test.js` | Node.js 原生测试 |
+| 功能 | 文件 / 关键函数 |
+| --- | --- |
+| 配置默认值、校验、人数和角色交换 | `src/core/config.js`：createDefaultConfig、validateConfig、setPlayerCount、selectCharacter |
+| 游戏初始状态 | `src/core/state.js`：createGameState |
+| 主题与角色描述 | `src/data/maps.js`、`src/data/characters.js` |
+| 三套真实棋盘、格子坐标与类型 | `src/data/boards.js`：createBoard、TILE_TYPES |
+| 骰子点数、循环路径 | `src/core/dice.js`：rollDice、movementPath |
+| 防连掷、移动确认、落格、回合上限 | `src/core/engine.js`：TurnEngine |
+| 大厅与配置交互 | `src/ui/menu.js`：mountMenu |
+| 对局信息、落格说明、日志、退出确认 | `src/ui/game.js`：mountGame |
+| 代码构建 Q 版角色 | `src/render/character.js`：createCharacter |
+| 共享主题场景与资源释放 | `src/render/preview.js`：WorldPreview |
+| 骰面绘制与结果朝向 | `src/render/dice.js`：createDice、diceOrientation |
+| 跳跃、跟随、动画取消 | `src/render/board.js`：BoardView.hop、roll、cancelAnimations、dispose |
+| 页面切换、异步动作协调 | `src/main.js`：showMenu、showGame |
+| 界面样式 | `src/styles.css`、`src/game.css` |
+| 边界测试与回合验证 | `tests/config.test.js`、`tests/engine.test.js` |
 
-## 开发阶段与暂停点
+## 分阶段进度
 
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
-| ① | 项目骨架、主菜单、场景预览 | 已实现，用户已确认；已补齐负责人讲解材料 |
-| ② | 真实棋盘数据、骰子动画、逐格移动、镜头跟随 | 未开始 |
-| ③ | `property` 模块、购买、租金、升级、地契 | 未开始 |
-| ④ | `event`、`bankrupt` 模块、变卖、结算 | 未开始 |
-| ⑤ | `ai` 模块、启发式决策、异常回退 | 未开始 |
-| ⑥ | 数字滚动、漂浮文字、音效、动画打磨 | 未开始 |
-| ⑦ | 完整真人 / AI 对局测试、文档与交付 | 未开始 |
+| ① | 工程与主菜单 | 已完成 |
+| ② | 棋盘与掷骰移动（A / dhz） | 已实现，阶段验收 |
+| ③ | 地产、购买、租金、升级（B） | 未开始 |
+| ④ | 事件、破产与结算（B） | 未开始 |
+| ⑤ | AI 决策（C） | 未开始 |
+| ⑥ | 动画音效打磨（C） | 未开始 |
+| ⑦ | 完整局测试、文档、部署 | 未开始 |
 
-每阶段完成后暂停交接。第①阶段已有本地中文提交 `95971be`；当前新增交接材料先保留为未提交改动，供负责人检查。参考任务书要求至少 10 次代码签入，后续通过真实功能与修复积累提交。第②阶段在用户要求暂停后尚未修改代码。
+每阶段完成后暂停交接，保留实际功能与修复提交。代码已建立共享 GitHub 仓库；分支上传状态以远程实际记录为准。完整游戏尚未部署，不能把当前演示描述为完整对局。
 
-## 实验报告与课程要求
+## 文档
 
-- `docs/01-选题说明.md`：选题、NABCD 分析、课程要求核对。
-- `docs/02-需求分析.md`：功能范围、验收条件与非功能需求。
-- `docs/03-设计文档.md`：分层、状态与后续规则模块规划。
-- `docs/04-测试报告.md`：测试用例、预期 / 实际结果与未覆盖范围。
-- `docs/05-开发记录.md`：阶段成果、真实修改与待办。
-- [团队模块交接与整合约定](docs/07-团队模块交接与整合约定.md)：四人分工、现有接口及后续接入注意事项。
+- `docs/01-选题说明.md`：选题与课程需求来源。
+- `docs/02-需求分析.md`：功能及非功能需求。
+- `docs/03-设计文档.md`：分层与模块设计。
+- `docs/04-测试报告.md`：各阶段实际测试结果及未覆盖范围。
+- `docs/05-开发记录.md`：功能演进与修复记录。
+- `docs/07-团队模块交接与整合约定.md`：接口与后续接入约定。
 
-任务书是 2020 年参考文档；时间安排以当前课程通知为准。`要求.txt` 明确提出 GitHub 提交及可运行实体验收，因此最终还需上传仓库并提供公开试玩地址、成员实际贡献记录、真实用户反馈和报告截图。
+原始任务书、课堂要求和个人答辩讲解材料保存在项目外的非项目内容目录，不参与运行或交付。课程报告和必要截图保留在 docs。
 
-原始任务书、`要求.txt` 和个人学习用的 `06-你的部分-主菜单与工程讲解.md` 已移至 `E:\code_2\软件工程pro的非项目内容`，不属于项目运行或提交依赖。课程需求摘要及交付文档仍保留在 `docs/`。
+## 部署规划
 
-## GitHub Pages 部署规划
-
-`vite.config.js` 已设置 `base: './'`，构建资源支持仓库子路径。最终可通过 GitHub Actions 构建并发布 `dist/` 到 Pages。当前尚未创建远程仓库、推送或部署；这些工作将在代码具备完整可玩性之后处理。不要将 `node_modules/` 提交到 Git。
+`vite.config.js` 使用相对资源路径 `base: './'`，可将构建得到的 dist 发布到 GitHub Pages。完整功能验收后再完成公开部署、成员信息及真实用户反馈。
