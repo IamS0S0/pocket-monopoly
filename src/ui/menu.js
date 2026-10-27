@@ -26,10 +26,10 @@ export function mountMenu(root, { onPreview, onStart, initialConfig }) {
           <p class="small-note" id="round-hint">默认 30 回合 · 支持 5–100 回合</p>
           <p id="form-error" class="form-error" role="alert"></p>
           <button type="button" id="start" class="start-button">集结出发 <span>→</span></button>
-          <p class="start-note">阶段③：购买、收租与升级 · AI 暂由玩家代操作</p>
+          <p class="start-note">阶段④：地产、事件与结算 · AI 暂由玩家代操作</p>
         </section>
       </div>
-      <footer><span>✦ 好运在路上，快乐在一起。</span><span>软件工程课程项目 <b> / </b> 第③阶段 · 地产经营</span></footer>
+      <footer><span>✦ 好运在路上，快乐在一起。</span><span>软件工程课程项目 <b> / </b> 第④阶段 · 事件与资产结算</span></footer>
     </main>
     <dialog id="info-dialog" aria-labelledby="dialog-title"><div class="dialog-icon">✦</div><h2 id="dialog-title"></h2><div id="dialog-content"></div><button type="button" class="start-button" id="close-dialog">返回大厅 <span>↩</span></button></dialog>`;
 
@@ -76,9 +76,9 @@ export function mountMenu(root, { onPreview, onStart, initialConfig }) {
     if (button.dataset.character) { config = selectCharacter(config, selectedSeat, button.dataset.character); refresh(); }
     if (button.id === 'help') showDialog('一场轻松的财富旅行', [
       '① 选择地图与 2–4 位旅伴，每个座位都能设为真人或 AI。点击座位后选择角色，占用的角色会自动交换。',
-      '② 设置回合上限。完整版本中，大家轮流掷骰、购买地产、升级房屋，并应对旅途中的随机事件。',
+      '② 设置回合上限。大家轮流掷骰、购买地产、升级房屋，并应对旅途中的随机事件。',
       '③ 仅剩一人或达到回合上限时，按总资产排名。',
-      '当前为第③阶段：无主地产可购买，踩他人地产自动付租，可在地契中升级自己的房屋。每块地产每回合最多升级一次。AI 暂由玩家代操作，事件与破产规则后续接入。',
+      '当前为第④阶段：无主地产可购买，踩他人地产自动付租，可在地契中升级自己的房屋。每块地产每回合最多升级一次。经过起点奖励 200 金币，税收 150 金币；监狱暂停下一次自己的回合。欠款时半价变卖房产，仍不足则破产退场。达到回合上限或仅剩一人时结算；AI 暂由玩家代操作。',
     ]);
     if (button.id === 'close-dialog') dialog.close();
     if (button.id === 'start') {

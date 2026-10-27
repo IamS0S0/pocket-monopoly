@@ -13,6 +13,7 @@ function finishMove(engine) {
   assert.equal(engine.beginMovement(action.token), true);
   for (const position of action.path) assert.equal(engine.completeStep(action.token, position), true);
   assert.equal(engine.land(action.token), true);
+  while (engine.state.notice) engine.acknowledge(engine.state.notice.token);
   if (engine.state.offer) engine.decideProperty(engine.state.offer.token, 'skip');
   return action;
 }
@@ -71,12 +72,12 @@ test('连掷、越步、提前落格、重复结束都被拒绝', () => {
   assert.equal(engine.state.round, 1);
 });
 
-test('跨起点只更新位置，当前阶段不擅自改变金币', () => {
+test('跨起点奖励只在完整落格后发放', () => {
   const engine = new TurnEngine(createDefaultConfig(), () => 0.5);
   engine.state.players[0].position = 22;
   finishMove(engine);
   assert.equal(engine.state.players[0].position, 2);
-  assert.equal(engine.state.players[0].coins, 1500);
+  assert.equal(engine.state.players[0].coins, 1700);
   assert.ok(engine.state.logs.some(message => message.includes('经过起点')));
 });
 
@@ -98,7 +99,7 @@ test('2–4 人完成五轮后停止，不多走一轮', () => {
   for (const count of [2, 3, 4]) {
     const config = setPlayerCount(createDefaultConfig(), count);
     config.roundLimit = 5;
-    const engine = new TurnEngine(config, () => 0.999);
+    const engine = new TurnEngine(config, () => 0, () => 0);
     for (let round = 1; round <= 5; round++) {
       for (let index = 0; index < count; index++) {
         assert.equal(engine.state.round, round);
@@ -109,7 +110,7 @@ test('2–4 人完成五轮后停止，不多走一轮', () => {
     assert.equal(engine.state.phase, 'finished');
     assert.equal(engine.beginRoll(), null);
     assert.equal(engine.endTurn(), false);
-    assert.ok(engine.state.players.every(player => player.position === 6));
+    assert.ok(engine.state.players.every(player => player.position === 5));
   }
 });
 

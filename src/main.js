@@ -68,7 +68,7 @@ function showGame(engine) {
           if (!engine.completeStep(action.token, position)) return;
           update();
         }
-        engine.land(action.token); update();
+        engine.land(action.token); view.sync(engine.state.players); update();
       } catch (error) {
         if (closed) return;
         if (action) engine.recover(action.token);
@@ -87,6 +87,9 @@ function showGame(engine) {
       if (closed || graphicsFailed) return;
       const result = engine.upgrade(propertyId, revision);
       update(); hud.error(result.ok ? '' : result.message);
+    },
+    acknowledge(token) {
+      if (!closed && !graphicsFailed && engine.acknowledge(token)) { view?.sync(engine.state.players); update(); }
     },
     leave: showMenu,
     camera(follow) { if (view) view.follow = follow; },

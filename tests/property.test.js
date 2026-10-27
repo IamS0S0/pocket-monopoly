@@ -115,7 +115,7 @@ test('升级金额边界与最高等级，失败不修改资产', () => {
   assert.equal(JSON.stringify(engine.state), before);
 });
 
-test('租金刚好可支付，不足则保留债务并停止推进', () => {
+test('租金刚好可支付，不足且无房产则破产并结算', () => {
   for (const cash of [33, 32]) {
     const engine = create(); buy(engine); engine.endTurn();
     engine.state.players[1].coins = cash; move(engine);
@@ -123,10 +123,12 @@ test('租金刚好可支付，不足则保留债务并停止推进', () => {
       assert.equal(engine.state.players[1].coins, 0);
       assert.equal(engine.state.phase, 'awaiting-end');
     } else {
-      assert.equal(engine.state.players[1].coins, 32);
-      assert.equal(engine.state.players[0].coins, 1280);
-      assert.equal(engine.state.phase, 'awaiting-payment');
-      assert.equal(engine.state.debt.amount, 33);
+      assert.equal(engine.state.players[1].coins, 0);
+      assert.equal(engine.state.players[0].coins, 1312);
+      assert.equal(engine.state.phase, 'awaiting-event');
+      assert.equal(engine.state.players[1].bankrupt, true);
+      engine.acknowledge(engine.state.notice.token);
+      assert.equal(engine.state.phase, 'finished');
       assert.equal(engine.endTurn(), false); assert.equal(engine.beginRoll(), null);
     }
   }

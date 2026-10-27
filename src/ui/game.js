@@ -1,6 +1,7 @@
 import { CHARACTERS } from '../data/characters.js';
 import { TILE_TYPES } from '../data/boards.js';
 import { totalAssets } from '../core/property.js';
+import { mountOutcome } from './outcome.js';
 import { mountDeeds } from './deed.js';
 
 export function mountGame(root, map, board, actions) {
@@ -13,10 +14,11 @@ export function mountGame(root, map, board, actions) {
     <section class="game-card landing-card" id="landing-card" aria-live="polite"></section><button id="open-deeds" class="text-button">地产与地契 · 查看 / 升级</button></aside></div>
     <section class="game-card log-card"><h2>旅行日志</h2><ol id="game-logs"></ol></section>
     <details class="board-directory"><summary>查看棋盘顺序与格子名称</summary><ol>${board.map(tile => `<li>${tile.index + 1}. ${tile.name} · ${TILE_TYPES[tile.type].name}</li>`).join('')}</ol></details>
-    <footer><span>第③阶段 · 地产经营</span><span>事件、破产结算与 AI 自动行动将在后续阶段接入</span></footer></main>
+    <footer><span>第④阶段 · 事件与资产结算</span><span>完整规则已接入 · AI 暂由真人代操作</span></footer></main>
     <dialog id="leave-dialog" aria-labelledby="leave-title"><h2 id="leave-title">结束这次旅行？</h2><p>返回大厅会清除本局进度，保留地图和队伍配置。移动中的动画也会停止。</p><button id="confirm-leave" class="start-button">返回大厅</button><button id="cancel-leave" class="text-button">继续旅行</button></dialog>`;
   const query = selector => root.querySelector(selector);
   const deeds = mountDeeds(root, actions);
+  const outcome = mountOutcome(root, actions);
   query('#open-deeds').addEventListener('click', () => deeds.open());
   query('#roll-dice').addEventListener('click', actions.roll);
   query('#end-turn').addEventListener('click', actions.end);
@@ -34,16 +36,16 @@ export function mountGame(root, map, board, actions) {
     error(message) { query('#game-error').textContent = message; deeds.error(message); },
     update(state) {
       const player = state.players[state.currentPlayerIndex];
-      const phaseText = { 'awaiting-roll': '等待掷骰', rolling: '骰子滚动中…', moving: '沿棋盘前进中…', 'awaiting-property': '等待购买决定', 'awaiting-payment': '等待清偿（下阶段接入）', 'awaiting-end': '已抵达，查看落点', finished: '阶段演示已结束', disposed: '对局已停止' };
+      const phaseText = { 'awaiting-roll': '等待掷骰', rolling: '骰子滚动中…', moving: '沿棋盘前进中…', 'awaiting-property': '等待购买决定', 'awaiting-event': '等待确认事件', 'awaiting-end': '已抵达，查看落点', finished: '本局已结算', disposed: '对局已停止' };
       query('#round-status').textContent = `第 ${state.round} / ${state.roundLimit} 回合`;
       query('#phase-status').textContent = `${player.name} · ${phaseText[state.phase] ?? ''}`;
       query('#game-players').replaceChildren(...state.players.map((item, index) => {
         const character = CHARACTERS.find(c => c.id === item.characterId);
         const card = document.createElement('div');
-        card.className = `game-player ${index === state.currentPlayerIndex ? 'active' : ''}`;
+        card.className = `game-player ${item.bankrupt ? 'bankrupt' : ''} ${index === state.currentPlayerIndex ? 'active' : ''}`;
         card.innerHTML = `<span class="seat-avatar" style="--character:${character.color}">${character.emoji}</span><div><strong></strong><small></small></div><span class="player-coins"></span>`;
         card.querySelector('strong').textContent = `${item.name} · ${character.name}`;
-        card.querySelector('small').textContent = `第 ${item.position + 1} 格 · ${item.type === 'ai' ? 'AI（暂代操作）' : '真人'}`;
+        card.querySelector('small').textContent = `${item.bankrupt ? '已破产退场' : item.skippedTurns ? '下次暂停' : `第 ${item.position + 1} 格`} · ${item.type === 'ai' ? 'AI（暂代操作）' : '真人'}`;
         const coinLabel = card.querySelector('.player-coins');
         coinLabel.textContent = `${item.coins.toLocaleString()} 金`;
         const assets = document.createElement('small');
@@ -51,9 +53,9 @@ export function mountGame(root, map, board, actions) {
         coinLabel.append(assets);
         return card;
       }));
-      query('#turn-heading').textContent = state.phase === 'finished' ? '本次移动演示完成' : `轮到 ${player.name}`;
+      query('#turn-heading').textContent = state.phase === 'finished' ? '本次旅行已结束' : `轮到 ${player.name}`;
       query('#dice-result').textContent = state.phase === 'rolling' ? '…' : state.diceValue ?? '?';
-      query('#turn-description').textContent = state.phase === 'finished' ? '已达到回合上限。资产排名与胜负界面将在后续阶段接入。' : player.type === 'ai' ? 'AI 策略尚未接入，请代为掷骰与结束回合。' : '掷骰后自动前进，落定后结束当前回合。';
+      query('#turn-description').textContent = state.phase === 'finished' ? '结算排名已生成，可返回大厅开始新局。' : player.type === 'ai' ? 'AI 策略尚未接入，请代为掷骰与结束回合。' : '掷骰后自动前进，落定后结束当前回合。';
       query('#roll-dice').disabled = state.phase !== 'awaiting-roll';
       query('#roll-dice').hidden = ['awaiting-end', 'finished'].includes(state.phase);
       query('#end-turn').hidden = state.phase !== 'awaiting-end';
@@ -65,6 +67,7 @@ export function mountGame(root, map, board, actions) {
       landing.append(heading, description);
       query('#game-logs').replaceChildren(...state.logs.map(message => { const li = document.createElement('li'); li.textContent = message; return li; }));
       deeds.update(state);
+      outcome.update(state);
     },
   };
 }

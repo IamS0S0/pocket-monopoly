@@ -63,7 +63,7 @@ export function collectRent(state, propertyId, visitorId) {
   if (!owner) return { ok: false, message: '地产所有者无效' };
   const amount = currentRent(property);
   if (player.coins < amount) {
-    // 第④阶段接入变卖清偿。本阶段保留完整债务，不产生负数或部分转账。
+    // 返回完整债务，由引擎交给变卖清偿模块处理。
     return { ok: false, debt: { propertyId, payerId: player.id, creditorId: owner.id, amount }, message: '金币不足以支付租金' };
   }
   player.coins -= amount;

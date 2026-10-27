@@ -1,10 +1,14 @@
 import { createGameState } from './state.js';
-import { createBoard, TILE_TYPES } from '../data/boards.js';
+import { createBoard } from '../data/boards.js';
 import { rollDice, movementPath } from './dice.js';
 import { createProperties, buyProperty, upgradeProperty, collectRent, MAX_PROPERTY_LEVEL } from './property.js';
 
+import { settlePayment } from './bankrupt.js';
+import { drawEvent } from './event.js';
+import { rankPlayers } from './result.js';
+
 export class TurnEngine {
-  constructor(config, random = Math.random) {
+  constructor(config, random = Math.random, eventRandom = Math.random) {
     this.state = createGameState(config);
     this.state.phase = 'awaiting-roll';
     this.board = createBoard(config.mapId);
@@ -13,9 +17,12 @@ export class TurnEngine {
     this.state.offer = null;
     this.state.debt = null;
     this.random = random;
+    this.eventRandom = eventRandom;
+    this.state.notice = null;
+    this.state.results = null;
     this.serial = 0;
     this.action = null;
-    this.state.logs = ['地产系统已就绪：可购买、收租和升级。事件、破产及 AI 自动行动将在后续阶段接入。'];
+    this.state.logs = ['旅行开始！经过起点奖励 200 金币；欠款时自动半价变卖房产，仍不足则破产。'];
   }
 
   snapshot() { return structuredClone({ ...this.state, revision: this.serial }); }
@@ -46,19 +53,20 @@ export class TurnEngine {
     const player = this.state.players[this.action.playerIndex];
     player.position = position;
     this.action.cursor++;
-    if (position === 0) this.log(`${player.name}经过起点（奖励规则待后续接入）。`);
+
     return true;
   }
 
   land(token) {
     if (!this.valid(token, 'moving') || this.action.cursor !== this.action.path.length) return false;
     const player = this.state.players[this.action.playerIndex];
+    if (this.action.path.includes(0)) { player.coins += 200; this.log(`${player.name}经过起点，获得 200 金币。`); }
     const tile = this.board[player.position];
-    this.state.landing = { ...tile, description: tile.type === 'start' ? '回到起点，旅程继续。' : `这是${TILE_TYPES[tile.type].name}格。特殊事件规则将在第④阶段接入。` };
+    this.state.landing = { ...tile, description: '回到起点，旅程继续。' };
     this.state.phase = 'awaiting-end';
     this.log(`${player.name}抵达第 ${tile.index + 1} 格「${tile.name}」。`);
     this.action = null;
-    if (tile.type === 'property') this.resolveProperty(tile, player);
+    this.resolveTile(tile, player);
     return true;
   }
 
@@ -76,10 +84,8 @@ export class TurnEngine {
         this.state.landing.description = `自动向${result.ownerName}支付租金 ${result.amount} 金币。`;
         this.log(`${player.name}向${result.ownerName}支付 ${result.amount} 金币租金。`);
       } else {
-        this.state.debt = result.debt ?? null;
-        this.state.phase = 'awaiting-payment';
-        this.state.landing.description = `${result.message}。第④阶段接入变卖与破产后可继续处理；本次请返回大厅。`;
-        this.log(this.state.landing.description);
+        const debt = result.debt;
+        this.pay(player, debt.amount, debt.creditorId, '租金清偿');
       }
     }
   }
@@ -118,18 +124,101 @@ export class TurnEngine {
     return result;
   }
 
+  notify(title, text, destination = null) {
+    this.state.notice = { token: ++this.serial, title, text, destination };
+    this.state.phase = 'awaiting-event';
+    this.state.landing.description = text;
+    this.log(text);
+  }
+
+  pay(player, amount, creditorId = null, title = '支付账单') {
+    const result = settlePayment(this.state, player.id, amount, creditorId);
+    const sales = result.sold.map(p => `变卖「${p.name}」回收 ${p.value} 金币`).join('；');
+    const text = `${player.name}应付 ${amount}，实付 ${result.paid} 金币。${sales ? sales + '。' : ''}${result.bankrupt ? `变卖后仍欠 ${result.unpaid} 金币，宣告破产并退场，余债核销。` : '支付完成。'}`;
+    this.notify(title, text);
+  }
+
+  resolveTile(tile, player) {
+    if (tile.type === 'property') return this.resolveProperty(tile, player);
+    if (tile.type === 'tax') return this.pay(player, 150, null, '城市税收');
+    if (tile.type === 'jail') {
+      player.skippedTurns = 1;
+      return this.notify('暂住监狱', `${player.name}暂停下一次自己的回合，之后自动恢复。`);
+    }
+    if (!['event', 'chance'].includes(tile.type)) return;
+    const event = drawEvent(tile.type, this.eventRandom);
+    if (event.kind === 'money' && event.amount < 0) return this.pay(player, -event.amount, null, event.title);
+    if (event.kind === 'money') player.coins += event.amount;
+    if (event.kind === 'skip') player.skippedTurns = 1;
+    let destination = null;
+    if (event.kind === 'teleport') {
+      // 只传送到地产，不递归抽事件，防止传送链无限循环。
+      for (let step = 1; step <= this.board.length; step++) {
+        const index = (player.position + step) % this.board.length;
+        if (this.board[index].type === 'property') { destination = index; break; }
+      }
+    }
+    this.notify(event.title, `${player.name}：${event.text}`, destination);
+  }
+
+  acknowledge(token) {
+    const notice = this.state.notice;
+    if (this.state.phase !== 'awaiting-event' || notice?.token !== token) return false;
+    this.state.notice = null;
+    this.serial++;
+    this.state.phase = 'awaiting-end';
+    if (this.checkSurvivor()) return true;
+    if (notice.destination !== null) {
+      const player = this.state.players[this.state.currentPlayerIndex];
+      player.position = notice.destination;
+      const tile = this.board[player.position];
+      this.state.landing = { ...tile, description: '传送抵达地产。' };
+      this.log(`${player.name}传送到「${tile.name}」。`);
+      this.resolveProperty(tile, player);
+    }
+    return true;
+  }
+
+  finish(reason) {
+    this.serial++;
+    this.action = null;
+    this.state.offer = null;
+    this.state.phase = 'finished';
+    this.state.results = { reason, ranking: rankPlayers(this.state) };
+    this.log(reason);
+  }
+
+  checkSurvivor() {
+    if (this.state.players.filter(p => !p.bankrupt).length <= 1) {
+      this.finish('仅剩一名玩家，旅行结束！'); return true;
+    }
+    return false;
+  }
+
   endTurn() {
     if (this.state.phase !== 'awaiting-end') return false;
-    const next = this.state.currentPlayerIndex + 1;
-    if (next === this.state.players.length && this.state.round >= this.state.roundLimit) {
-      this.state.phase = 'finished';
-      this.log('已达到回合上限，本次移动演示结束。资产排名将在后续阶段接入。');
-      return true;
+    if (this.checkSurvivor()) return true;
+    // 每经过最后一个座位算一轮；破产座位不行动，暂停次数仅在轮到本人时消耗。
+    while (true) {
+      const next = (this.state.currentPlayerIndex + 1) % this.state.players.length;
+      if (next === 0) {
+        if (this.state.round >= this.state.roundLimit) {
+          this.finish('达到回合上限，按总资产结算。'); return true;
+        }
+        this.state.round++;
+      }
+      this.state.currentPlayerIndex = next;
+      const player = this.state.players[next];
+      if (player.bankrupt) continue;
+      if (player.skippedTurns > 0) {
+        player.skippedTurns--;
+        this.log(`${player.name}暂停本次回合，之后恢复行动。`);
+        continue;
+      }
+      break;
     }
-    this.state.currentPlayerIndex = next % this.state.players.length;
     this.serial++;
     this.state.upgradedThisTurn = [];
-    if (next === this.state.players.length) this.state.round++;
     this.state.phase = 'awaiting-roll';
     this.state.landing = null;
     this.state.diceValue = null;

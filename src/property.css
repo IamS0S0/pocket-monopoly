@@ -22,3 +22,10 @@
   #deed-list { max-height: 145px; }
   .deed-dialog { padding: 18px; }
 }
+
+/* 破产退场与最终结算的状态反馈。 */
+.game-player.bankrupt { opacity: .45; filter: grayscale(1); }
+#event-text { line-height: 1.9; padding: 16px; background: #fff3dd; border-radius: 16px; }
+#result-ranking { list-style: none; padding: 0; display: grid; gap: 12px; }
+#result-ranking li { padding: 16px; border-radius: 14px; background: #f0f4f3; line-height: 1.7; }
+#result-ranking .result-winner { background: #fff0bd; border: 2px solid #f3c559; }

@@ -51,7 +51,7 @@ export function mountDeeds(root, actions) {
     button.id = 'upgrade-property'; button.disabled = Boolean(reason);
     const expectedRevision = revision;
     button.addEventListener('click', () => actions.upgrade(property.id, expectedRevision));
-    detail.append(button, text('p', '账面价值按购入价加已投入的升级费用计算；变卖规则将在第④阶段接入。'));
+    detail.append(button, text('p', '账面价值按购入价加已投入的升级费用计算；欠款时自动按账面价值的 50% 变卖，优先出售低价值地产。'));
   }
 
   const decide = choice => actions.decide(offerToken, choice);
