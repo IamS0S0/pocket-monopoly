@@ -13,6 +13,7 @@ function finishMove(engine) {
   assert.equal(engine.beginMovement(action.token), true);
   for (const position of action.path) assert.equal(engine.completeStep(action.token, position), true);
   assert.equal(engine.land(action.token), true);
+  if (engine.state.offer) engine.decideProperty(engine.state.offer.token, 'skip');
   return action;
 }
 
@@ -62,6 +63,8 @@ test('连掷、越步、提前落格、重复结束都被拒绝', () => {
   action.path.forEach(position => assert.equal(engine.completeStep(action.token, position), true));
   assert.equal(engine.land(action.token), true);
   assert.equal(engine.land(action.token), false);
+  assert.equal(engine.endTurn(), false);
+  assert.equal(engine.decideProperty(engine.state.offer.token, 'skip').ok, true);
   assert.equal(engine.endTurn(), true);
   assert.equal(engine.endTurn(), false);
   assert.equal(engine.state.currentPlayerIndex, 1);

@@ -2,7 +2,7 @@
 
 软件工程课程项目：Three.js + Vite + 原生 JavaScript，纯前端实现，无后端、外部模型或在线 AI 服务。
 
-**当前为第②阶段：主菜单、三套棋盘、掷骰动画、逐格移动及回合切换已实现。地产交易、事件效果、破产结算和 AI 自动决策尚未实现。**
+**当前为第③阶段：主菜单、棋盘移动、地产购买、自动收租、升级和地契查看已实现。事件效果、破产结算和 AI 自动决策尚未实现。**
 
 ## 运行
 
@@ -22,10 +22,10 @@ npm run build
 1. 在大厅选地图、2–4 名玩家、角色与 5–100 回合上限。
 2. 点击集结出发进入棋盘；所有棋子从起点出发，同格棋子有不同站位。
 3. 点击掷骰子：骰子滚动后，角色按点数逐格跳跃，镜头平滑跟随；可关闭镜头跟随。
-4. 落定后显示格子名称和类型，点击结束回合切换玩家。每位玩家行动一次才增加一轮。
+4. 落到无主地产后选择购买或放弃，落到他人地产自动支付租金。点击「地产与地契」可查看归属、各级租金并升级自己的房屋。落格处理完成后才能结束回合，每位玩家行动一次才增加一轮。
 5. 达到回合上限后停止移动演示。返回大厅会清除本局进度，保留最近配置；刷新页面不保存进度。
 
-本阶段 AI 座位由玩家手动代掷，界面明确标注。经过起点、地产、事件、机会、监狱和税收格目前只展示说明，不增减金币，不执行完整游戏规则。
+本阶段 AI 座位由玩家手动代操作。地产交易实际改变金币和产权；事件、机会、监狱、税收及起点奖励仍待第④阶段接入。租金不足时暂停并保留债务，不制造负数或自动免租；变卖和破产处理在第④阶段完成前，需返回大厅重新开始。
 
 ## 架构
 
@@ -50,6 +50,10 @@ core 不导入 DOM 或 Three.js。规则层先确定点数和路径，渲染层�
 | 游戏初始状态 | `src/core/state.js`：createGameState |
 | 主题与角色描述 | `src/data/maps.js`、`src/data/characters.js` |
 | 三套真实棋盘、格子坐标与类型 | `src/data/boards.js`：createBoard、TILE_TYPES |
+| 地价、产权、租金、升级、总资产 | `src/core/property.js`：propertyTerms、createProperties、buyProperty、collectRent、upgradeProperty、totalAssets |
+| 购买决策与升级权限 | `src/core/engine.js`：resolveProperty、decideProperty、upgrade |
+| 购买弹窗与地契 | `src/ui/deed.js`：mountDeeds；`src/property.css` |
+| 产权颜色与房屋等级 | `src/render/board.js`：syncProperties |
 | 骰子点数、循环路径 | `src/core/dice.js`：rollDice、movementPath |
 | 防连掷、移动确认、落格、回合上限 | `src/core/engine.js`：TurnEngine |
 | 大厅与配置交互 | `src/ui/menu.js`：mountMenu |
@@ -60,15 +64,15 @@ core 不导入 DOM 或 Three.js。规则层先确定点数和路径，渲染层�
 | 跳跃、跟随、动画取消 | `src/render/board.js`：BoardView.hop、roll、cancelAnimations、dispose |
 | 页面切换、异步动作协调 | `src/main.js`：showMenu、showGame |
 | 界面样式 | `src/styles.css`、`src/game.css` |
-| 边界测试与回合验证 | `tests/config.test.js`、`tests/engine.test.js` |
+| 边界测试与回合验证 | `tests/config.test.js`、`tests/engine.test.js`、`tests/property.test.js` |
 
 ## 分阶段进度
 
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | ① | 工程与主菜单 | 已完成 |
-| ② | 棋盘与掷骰移动（A / dhz） | 已实现，阶段验收 |
-| ③ | 地产、购买、租金、升级（B） | 未开始 |
+| ② | 棋盘与掷骰移动（A / dhz） | 已验收并合入 main |
+| ③ | 地产、购买、租金、升级（B / waz） | 已实现，阶段验收 |
 | ④ | 事件、破产与结算（B） | 未开始 |
 | ⑤ | AI 决策（C） | 未开始 |
 | ⑥ | 动画音效打磨（C） | 未开始 |
@@ -90,3 +94,11 @@ core 不导入 DOM 或 Three.js。规则层先确定点数和路径，渲染层�
 ## 部署规划
 
 `vite.config.js` 使用相对资源路径 `base: './'`，可将构建得到的 dist 发布到 GitHub Pages。完整功能验收后再完成公开部署、成员信息及真实用户反馈。
+
+## 地产阶段规则
+
+- 地价为 180 +（格子索引 % 5）× 40；升级费用为地价的 60%，基础租金为地价的 15%，均取整数。
+- 地产等级 0–3，对应租金倍率 1、2、4、7。每块地产在一个自己的回合中最多升级一次。
+- 可在掷骰前或落格处理完成后升级自己的任意地产；移动中、购买等待中、欠租和演示结束时不能升级。
+- 总资产为现金加已持有地产的购入价及升级投入。它是账面价值，不等同于未来的变卖回收价格。
+- 自动收租在落格时只执行一次；资金不足时不进行部分转账，债务交给后续清偿模块处理。
