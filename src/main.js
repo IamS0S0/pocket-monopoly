@@ -1,5 +1,6 @@
 import './styles.css';
 import './game.css';
+import './property.css';
 import { mountMenu } from './ui/menu.js';
 import { mountGame } from './ui/game.js';
 import { WorldPreview } from './render/preview.js';
@@ -50,7 +51,7 @@ function showGame(engine) {
   const root = newPage();
   const map = MAPS.find(item => item.id === engine.state.mapId);
   let view, closed = false, graphicsFailed = false;
-  const update = () => { if (!closed) { hud.update(engine.snapshot()); view?.focus(engine.state.currentPlayerIndex); } };
+  const update = () => { if (!closed) { hud.update(engine.snapshot()); view?.focus(engine.state.currentPlayerIndex); view?.syncProperties(engine.state.properties, engine.state.players); } };
   const hud = mountGame(root, map, engine.board, {
     async roll() {
       if (closed || !view || graphicsFailed) return;
@@ -67,7 +68,7 @@ function showGame(engine) {
           if (!engine.completeStep(action.token, position)) return;
           update();
         }
-        engine.land(action.token); update();
+        engine.land(action.token); view.sync(engine.state.players); update();
       } catch (error) {
         if (closed) return;
         if (action) engine.recover(action.token);
@@ -77,6 +78,19 @@ function showGame(engine) {
       }
     },
     end() { if (!closed && !graphicsFailed && engine.endTurn()) update(); },
+    decide(token, choice) {
+      if (closed || graphicsFailed) return;
+      const result = engine.decideProperty(token, choice);
+      update(); hud.error(result.ok ? '' : result.message);
+    },
+    upgrade(propertyId, revision) {
+      if (closed || graphicsFailed) return;
+      const result = engine.upgrade(propertyId, revision);
+      update(); hud.error(result.ok ? '' : result.message);
+    },
+    acknowledge(token) {
+      if (!closed && !graphicsFailed && engine.acknowledge(token)) { view?.sync(engine.state.players); update(); }
+    },
     leave: showMenu,
     camera(follow) { if (view) view.follow = follow; },
   });

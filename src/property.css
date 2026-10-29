@@ -1,0 +1,31 @@
+.dialog-secondary { width: 100%; margin-top: 16px; padding: 12px; }
+.purchase-price { color: #b37e2d; font-size: 36px; font-weight: 800; padding: 12px 0; }
+#purchase-error, #deed-error { color: #ab4d3a; }
+.deed-dialog { max-width: 780px; width: calc(100% - 24px); max-height: 90vh; }
+.deed-header { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.deed-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 22px; }
+#deed-list { display: flex; flex-direction: column; gap: 7px; max-height: 450px; overflow: auto; padding: 4px; }
+#deed-list button { background: #f2f3e8; border: 1px solid #dce3d2; border-radius: 9px; padding: 11px; text-align: left; font-size: 12px; }
+#deed-list button[aria-pressed=true] { background: #385c49; color: #fff8dc; }
+#deed-detail h3 { font-size: 25px; margin: 5px 0; }
+.deed-level { display: inline-block; border: 1px solid #d5bd77; border-radius: 20px; padding: 6px 14px; background: #f7edcf; }
+.deed-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; font-size: 12px; }
+.deed-facts dd { margin: 0; text-align: right; font-weight: bold; }
+.rent-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.rent-table caption { text-align: left; font-weight: bold; padding: 10px 0; }
+.rent-table th, .rent-table td { padding: 8px; border-bottom: 1px solid #e2e4d7; text-align: left; }
+.current-level { background: #ecf1df; font-weight: bold; }
+#upgrade-property:disabled { cursor: not-allowed; font-size: 12px; letter-spacing: 0; }
+.player-coins small { text-align: right; }
+@media (max-width: 600px) {
+  .deed-layout { grid-template-columns: 1fr; }
+  #deed-list { max-height: 145px; }
+  .deed-dialog { padding: 18px; }
+}
+
+/* 破产退场与最终结算的状态反馈。 */
+.game-player.bankrupt { opacity: .45; filter: grayscale(1); }
+#event-text { line-height: 1.9; padding: 16px; background: #fff3dd; border-radius: 16px; }
+#result-ranking { list-style: none; padding: 0; display: grid; gap: 12px; }
+#result-ranking li { padding: 16px; border-radius: 14px; background: #f0f4f3; line-height: 1.7; }
+#result-ranking .result-winner { background: #fff0bd; border: 2px solid #f3c559; }

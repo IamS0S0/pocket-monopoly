@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { WorldPreview } from './preview.js';
 import { createDice, diceOrientation } from './dice.js';
+import { CHARACTERS } from '../data/characters.js';
 
 export class BoardView extends WorldPreview {
   constructor(container, map, players, board) {
@@ -62,6 +63,42 @@ export class BoardView extends WorldPreview {
   }
 
   focus(index) { this.activeIndex = index; }
+
+  syncProperties(properties, players) {
+    this.propertyVisuals ??= new Map();
+    for (const property of Object.values(properties)) {
+      const key = `${property.ownerId}:${property.level}`;
+      const previous = this.propertyVisuals.get(property.id);
+      if (previous?.key === key) continue;
+      if (previous) {
+        this.world.remove(previous.group);
+        previous.group.traverse(object => { object.geometry?.dispose(); object.material?.dispose(); });
+      }
+      const group = new THREE.Group();
+      this.world.add(group);
+      this.propertyVisuals.set(property.id, { key, group });
+      if (!property.ownerId) continue;
+      const owner = players.find(player => player.id === property.ownerId);
+      if (!owner) continue;
+      const color = CHARACTERS.find(character => character.id === owner.characterId).color;
+      const tile = this.board[property.index];
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.035, 6, 24), new THREE.MeshBasicMaterial({ color }));
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(tile.x, 0.54, tile.z);
+      group.add(ring);
+      // 房屋靠近棋盘内侧，避免与同格玩家站位完全重叠。
+      const centerDistance = Math.hypot(tile.x, tile.z);
+      const x = tile.x - tile.x / centerDistance * 0.32;
+      const z = tile.z - tile.z / centerDistance * 0.32;
+      const height = 0.12 + property.level * 0.18;
+      const house = new THREE.Mesh(new THREE.BoxGeometry(0.26, height, 0.26), new THREE.MeshStandardMaterial({ color, roughness: 0.8 }));
+      house.position.set(x, 0.53 + height / 2, z); house.castShadow = true; group.add(house);
+      if (property.level > 0) {
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.23, 0.17, 4), new THREE.MeshStandardMaterial({ color: '#fff2cc' }));
+        roof.position.set(x, 0.53 + height + 0.085, z); roof.rotation.y = Math.PI / 4; roof.castShadow = true; group.add(roof);
+      }
+    }
+  }
 
   tween(duration, update) {
     if (this.closed) return Promise.resolve(false);
